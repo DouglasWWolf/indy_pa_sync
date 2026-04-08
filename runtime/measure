@@ -1,0 +1,34 @@
+tick_limit=$1
+test -z $tick_limit && tick_limit=1000
+
+# Our status and control registers
+     REG_RESET=0x2000
+REG_TICK_LIMIT=0x2004
+REG_TICK_COUNT=0x2008
+ REG_HISTOGRAM=0x2100
+
+# Put the process in reset
+pcireg $REG_RESET 1
+
+# Set the number of ticks we want to measure
+pcireg $REG_TICK_LIMIT $tick_limit
+
+# Start counting ticks
+pcireg $REG_RESET 0
+
+# Wait for the counting to finish
+while :; do
+    sleep 1
+    test $(pcireg REG_TICK_COUNT -dec) -eq $tick_limit && break
+done
+
+# Print out the histogram, omitting bins that have zero counts
+i=0;
+while [ $i -lt 256 ]; do
+    address=$(( REG_HISTOGRAM + i*4 ))
+    count=$(pcireg $address -dec)
+    if [ $count -ne 0 ]; then
+        printf "bin [0x%02X] = %d\n" $i $count
+    fi
+    i=$((i + 1))
+done
