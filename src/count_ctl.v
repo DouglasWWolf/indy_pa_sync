@@ -8,8 +8,8 @@
 //====================================================================================
 
 /*
-     Provides status and control register for analyzing the sensor-chip's
-     "pa_sync" signal
+     Provides status and control registers for analyzing the sensor-chip's
+     "pa_sync" by building a histogram its period
 */
 
 
@@ -56,7 +56,94 @@ genvar i;
 
 // pa_sync_raw synchronized to our clock
 wire pa_sync;
-reg  reset_histogram;
+
+// When this is asserted, our histogram values are reset to 0
+reg reset_histogram;
+
+// One counter for each possible value of pa_sync_timer 
+reg[31:0] histogram[0:255];
+
+// This is how many ticks we've observed so far
+reg[31:0] tick_count;
+
+// We keep building our histogram until tick_count == tick_limit
+reg[31:0] tick_limit;
+
+// We're running so lock as we haven't counted our last tick yet
+wire running = (tick_count < tick_limit) & (reset_histogram == 0);
+
+//==========================================================================
+// Perform edge detection on pa_sync
+//==========================================================================
+reg prior_pa_sync;
+always @(posedge clk) prior_pa_sync <= pa_sync;
+wire rising_edge = (prior_pa_sync == 0) & (pa_sync == 1);
+//==========================================================================
+
+
+
+//==========================================================================
+// When we're running, pa_sync_timer increments every time we see the
+// rising edge of pa_sync.  When we're not running, we adjust our timer
+// such that the rising edge of pa_sync occured on count 0x80
+//==========================================================================
+reg [7:0] pa_sync_timer;
+always @(posedge clk) begin
+    if (rising_edge & reset_histogram)
+        pa_sync_timer <= 129;
+    else
+        pa_sync_timer <= pa_sync_timer + 1;
+end
+//==========================================================================
+
+
+//==========================================================================
+// Here we count rising edges of pa_sync
+//==========================================================================
+always @(posedge clk) begin
+    if (reset_histogram)
+        tick_count <= 0;
+    else if (rising_edge && tick_count < tick_limit)
+        tick_count <= tick_count + 1;
+end
+//==========================================================================
+
+
+//==========================================================================
+// Create a histogram of what the value of pa_sync_timer was every time
+// we see the rising edge of pa_sync
+//==========================================================================
+for (i=0; i<256; i=i+1) begin
+    always @(posedge clk) begin
+        if (reset_histogram)
+            histogram[i] <= 0;
+        else if (running && rising_edge && pa_sync_timer == i)
+            histogram[i] <= histogram[i] + 1;
+    end
+end
+//==========================================================================
+
+
+//=============================================================================
+// Synchronize "pa_sync_raw" into "pa_sync"
+//=============================================================================
+xpm_cdc_single #
+(
+    .DEST_SYNC_FF  (3),
+    .INIT_SYNC_FF  (0),
+    .SIM_ASSERT_CHK(0),
+    .SRC_INPUT_REG (0)
+)
+sync_pa_sync
+(
+    .src_clk (            ),
+    .src_in  (pa_sync_raw ),
+    .dest_clk(clk         ),
+    .dest_out(pa_sync     )
+);
+//=============================================================================
+
+
 
 //=========================  AXI Register Map  =============================
 localparam REG_RESET      = 0;
@@ -96,63 +183,6 @@ assign ashi_ridle = (ashi_read  == 0) && (ashi_read_state  == 0);
 localparam OKAY   = 0;
 localparam SLVERR = 2;
 localparam DECERR = 3;
-
-reg[31:0] histogram[0:255];
-
-reg[31:0] tick_count;
-
-reg[31:0] tick_limit;
-
-wire running = (tick_count < tick_limit) & (reset_histogram == 0);
-
-//==========================================================================
-// Perform edge detection on pa_sync
-//==========================================================================
-reg prior_pa_sync;
-always @(posedge clk) prior_pa_sync <= pa_sync;
-wire rising_edge = (prior_pa_sync == 0) & (pa_sync == 1);
-//==========================================================================
-
-
-
-//==========================================================================
-// When we're running, pa_sync_timer increments every time we see the
-// rising edge of pa_sync.  When we're not running, we adjust our timer
-// such that the rising edge of pa_sync occured on count 0x80
-//==========================================================================
-reg[7:0] pa_sync_timer;
-always @(posedge clk) begin
-    if (rising_edge) begin
-
-        if (reset_histogram)  begin
-            tick_count    <= 0;
-            pa_sync_timer <= 129;
-        end
-
-        else begin
-            pa_sync_timer <= pa_sync_timer + 1;
-            if (running) tick_count <= tick_count + 1;
-        end
-    
-    end
-end
-//==========================================================================
-
-
-//==========================================================================
-// Create a histogram of what the value of pa_sync_timer was every time
-// we see the rising edge of pa_sync
-//==========================================================================
-for (i=0; i<256; i=i+1) begin
-    always @(posedge clk) begin
-        if (reset_histogram)
-            histogram[i] <= 0;
-        else if (running && rising_edge && pa_sync_timer == i)
-            histogram[i] <= histogram[i] + 1;
-    end
-end
-//==========================================================================
-
 
 
 //==========================================================================
@@ -211,17 +241,18 @@ always @(posedge clk) begin
         // Assume for the moment that the result will be OKAY
         ashi_rresp <= OKAY;              
         
-        // ashi_rindex = index of register to be read
-        if (ashi_rindx >= 256 && ashi_rindx <= 511)
+        // ashi_rindx = index of register to be read
+        if (ashi_rindx >= 256 && ashi_rindx <= 511) begin
             ashi_rdata <= histogram[ashi_rindx - 256];
-        
+        end
+
         else case (ashi_rindx)
             
             // Allow a read from any valid register                
             REG_RESET:          ashi_rdata <= reset_histogram;
             REG_TICK_LIMIT:     ashi_rdata <= tick_limit;
             REG_TICK_COUNT:     ashi_rdata <= tick_count;
-
+            
             // Reads of any other register are a decode-error
             default: ashi_rresp <= DECERR;
 
@@ -232,25 +263,6 @@ end
 
 
 //=============================================================================
-// Synchronize "pa_sync_raw" into "pa_sync"
-//=============================================================================
-xpm_cdc_single #
-(
-    .DEST_SYNC_FF  (3),
-    .INIT_SYNC_FF  (0),
-    .SIM_ASSERT_CHK(0),
-    .SRC_INPUT_REG (0)
-)
-sync_pa_sync
-(
-    .src_clk (            ),
-    .src_in  (pa_sync_raw ),
-    .dest_clk(clk         ),
-    .dest_out(pa_sync     )
-);
-//=============================================================================
-
-
 
 
 
@@ -308,10 +320,6 @@ axi4_lite_slave#(.AW(AW)) i_axi4lite_slave
     .ASHI_RIDLE     (ashi_ridle)
 );
 //==========================================================================
-
-
-
-
 
 
 endmodule

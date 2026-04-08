@@ -5,7 +5,7 @@ test -z $tick_limit && tick_limit=1000
      REG_RESET=0x2000
 REG_TICK_LIMIT=0x2004
 REG_TICK_COUNT=0x2008
- REG_HISTOGRAM=0x2100
+ REG_HISTOGRAM=0x2400
 
 # Put the process in reset
 pcireg $REG_RESET 1
@@ -19,7 +19,7 @@ pcireg $REG_RESET 0
 # Wait for the counting to finish
 while :; do
     sleep 1
-    test $(pcireg REG_TICK_COUNT -dec) -eq $tick_limit && break
+    test $(pcireg $REG_TICK_COUNT -dec) -eq $tick_limit && break
 done
 
 # Print out the histogram, omitting bins that have zero counts

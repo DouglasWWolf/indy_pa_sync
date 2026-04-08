@@ -235,7 +235,7 @@
                 "MI": "M_AXI_B",
                 "MS": "SEG_count_ctl_reg0",
                 "MV": "xilinx.com:ip:xdma:4.1",
-                "SX": "/count_ctl",
+                "SX": "/sys_192mhz/count_ctl",
                 "SI": "S_AXI",
                 "SS": "reg0",
                 "SV": "xilinx.com:module_ref:count_ctl:1.0",

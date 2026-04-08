@@ -2,7 +2,7 @@
   "schema": "xilinx.com:schema:json_instance:1.0",
   "ip_inst": {
     "xci_name": "top_level_xpm_cdc_gen_0_1",
-    "cell_name": "source_160mhz/async_resetn",
+    "cell_name": "chip_spi/async_resetn",
     "component_reference": "xilinx.com:ip:xpm_cdc_gen:1.0",
     "ip_revision": "4",
     "gen_directory": "../../../../../../project.gen/sources_1/bd/top_level/ip/top_level_xpm_cdc_gen_0_1",

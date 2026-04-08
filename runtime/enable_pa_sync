@@ -11,5 +11,5 @@ SRDWR_VLIQ_PERIOD=0x4040
 
 chip $GPIO_CTRL         0x0FE0_07E0
 chip $GPIO_SYNC         0xF002
-chip $SRDWR_PA_MODE     $(( (1 << 10) | (1 << 0) ))
+chip $SRDWR_PA_MODE     0x0401
 chip $SRDWR_VLIQ_PERIOD 0

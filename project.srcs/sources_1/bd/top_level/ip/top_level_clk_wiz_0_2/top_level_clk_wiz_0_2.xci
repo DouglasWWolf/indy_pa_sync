@@ -2,7 +2,7 @@
   "schema": "xilinx.com:schema:json_instance:1.0",
   "ip_inst": {
     "xci_name": "top_level_clk_wiz_0_2",
-    "cell_name": "chip_clocking/clk_768mhz",
+    "cell_name": "hier_0/clk_768mhz",
     "component_reference": "xilinx.com:ip:clk_wiz:6.0",
     "ip_revision": "15",
     "gen_directory": "../../../../../../project.gen/sources_1/bd/top_level/ip/top_level_clk_wiz_0_2",
