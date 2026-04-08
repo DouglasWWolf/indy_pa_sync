@@ -1,0 +1,15 @@
+chip()
+{
+    pcireg 0x1000 $1
+    pcireg 0x1004 $2
+}
+
+        GPIO_CTRL=0x40
+        GPIO_SYNC=0x48
+SRDWR_VLIQ_PERIOD=0x4040
+    SRDWR_PA_MODE=0x4070
+
+chip $GPIO_CTRL         0x0FE0_07E0
+chip $GPIO_SYNC         0xF002
+chip $SRDWR_PA_MODE     $(( (1 << 10) | (1 << 0) ))
+chip $SRDWR_VLIQ_PERIOD 0
