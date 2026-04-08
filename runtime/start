@@ -1,0 +1,12 @@
+GPIO_CTRL=0x40
+_select is the lower 16 bits
+_direction is the upper 16 bits
+
+GPIO_SYNC=0x48
+_syncin is the lower 16 bits
+
+SRDWR_PA_MODE=0x4070
+_pa_mode is bit 0
+_src_sel is 2 bits wide starting at bit 10
+
+SRDWR_VLIQ_PERIOD=0x4040 
